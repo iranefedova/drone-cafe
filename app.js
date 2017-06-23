@@ -1,21 +1,15 @@
-
-/**
- * Module dependencies
- */
-
-var express = require('express'),
+const express = require('express'),
   routes = require('./routes'),
   api = require('./routes/api'),
   http = require('http'),
   path = require('path');
 
-var app = module.exports = express();
-var server = require('http').createServer(app);
-var io = require('socket.io').listen(server);
+const app = module.exports = express();
+const server = require('http').createServer(app);
+const io = require('socket.io').listen(server);
+const bodyParser = require('body-parser');
+const api_client = require('./api_client');
 
-/**
- * Configuration
- */
 
 // all environments
 app.set('port', process.env.PORT || 3000);
@@ -27,30 +21,38 @@ app.use(express.methodOverride());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(app.router);
 
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({"extended": true}));
+
 // development only
 if (app.get('env') === 'development') {
   app.use(express.errorHandler());
 }
-
-// production only
-if (app.get('env') === 'production') {
-  // TODO
-};
-
 
 /**
  * Routes
  */
 
 // serve index and view partials
-app.get('/', routes.index);
-app.get('/partials/:name', routes.partials);
+// app.get('/', routes.index);
+// app.get('/partials/:name', routes.partials);
 
 // JSON API
-app.get('/api/name', api.name);
+// app.get('/api/name', api.name);
 
 // redirect all others to the index (HTML5 history)
-app.get('*', routes.index);
+// app.get('*', routes.index);
+
+app.use("/", api_client);
+// app.use("/kitchen", api_kitchen);
+
+
+app.all('*', api_client);
+
+app.use(function(err, req, res, next) {
+  console.log(err.stack);
+  res.status(500).send({error: 'Something failed! Please try again'});
+});
 
 // Socket.io Communication
 io.sockets.on('connection', require('./routes/socket'));
@@ -60,5 +62,5 @@ io.sockets.on('connection', require('./routes/socket'));
  */
 
 server.listen(app.get('port'), function () {
-  console.log('Express server listening on port ' + app.get('port'));
+  console.log('Server start listening on port ' + app.get('port'));
 });
